@@ -1,0 +1,182 @@
+1)CREATE OR REPLACE PROCEDURE priklad1 (p_kraj kraje.nazev%type)
+AS
+    CURSOR cur_pp IS
+    SELECT COUNT(DISTINCT nazevpivovaru) Cntpivo,nazevobce FROM
+    (SELECT COUNT(DISTINCT DP.NAZEV) Cndruhy, kraje.NAZEV as krajenazev,OBCE.NAZEV as nazevobce,p.NAZEV as nazevpivovaru
+    FROM KRAJE JOIN OBCE ON OBCE.ID_KRAJE = KRAJE.ID_KRAJE JOIN SMEROVACI_CISLA ON OBCE.ID_OBCE = SMEROVACI_CISLA.ID_OBCE
+    JOIN ADRESY A2 on SMEROVACI_CISLA.PSC = A2.PSC JOIN PIVOVARY P on A2.ID_ADRESY = P.ID_ADRESY
+    JOIN PIVA ON P.ID_PIVOVARU = PIVA.ID_PIVOVARU JOIN DRUHY_PIVA DP on DP.ID_DRUHU_PIVA = PIVA.ID_DRUHU_PIVA
+    where KRAJE.NAZEV=p_kraj
+    GROUP BY P.NAZEV,OBCE.NAZEV, kraje.NAZEV order by KRAJE.NAZEV, OBCE.NAZEV, P.NAZEV) group by nazevobce order by nazevobce ASC;
+
+    CURSOR cur_pdp IS
+    SELECT nazevpivovaru, Cndruhy, nazevobce FROM
+    (SELECT COUNT(DISTINCT DP.NAZEV) Cndruhy, kraje.NAZEV as krajenazev,OBCE.NAZEV as nazevobce,p.NAZEV as nazevpivovaru
+    FROM KRAJE JOIN OBCE ON OBCE.ID_KRAJE = KRAJE.ID_KRAJE JOIN SMEROVACI_CISLA ON OBCE.ID_OBCE = SMEROVACI_CISLA.ID_OBCE
+    JOIN ADRESY A2 on SMEROVACI_CISLA.PSC = A2.PSC JOIN PIVOVARY P on A2.ID_ADRESY = P.ID_ADRESY
+    JOIN PIVA ON P.ID_PIVOVARU = PIVA.ID_PIVOVARU JOIN DRUHY_PIVA DP on DP.ID_DRUHU_PIVA = PIVA.ID_DRUHU_PIVA
+    where KRAJE.NAZEV=p_kraj
+    GROUP BY P.NAZEV,OBCE.NAZEV, kraje.NAZEV order by KRAJE.NAZEV, OBCE.NAZEV, P.NAZEV) order by nazevobce asc;
+
+BEGIN
+    FOR r_pp IN cur_pp LOOP
+          sys.dbms_output.PUT_LINE(r_pp.nazevobce || ' (' || r_pp.Cntpivo || ')');
+          sys.dbms_output.PUT_LINE('###################################');
+          FOR r_pdp IN cur_pdp LOOP
+              IF r_pdp.nazevobce=r_pp.nazevobce THEN
+                  sys.dbms_output.PUT_LINE('  ' || r_pdp.nazevpivovaru || ' :: ' || r_pdp.Cndruhy);
+              end if;
+              end loop;
+          end loop;
+end;
+2)create or replace PROCEDURE priklad2 (p_idpivo PIVOVARY.id_pivovaru%type)
+AS
+    CURSOR cur_vystav IS SELECT PIVOVARY.NAZEV as pivonazev,ULICE,CISLO_POPISNE,CISLO_ORIENTACNI,O.NAZEV as obecnazev, A2.PSC, V.CAS_VYSTAVENI,V.POCET_KUSU,
+    DP.ID_DRUHU_PIVA,ID_RESTAURACE FROM PIVOVARY JOIN PIVA P on PIVOVARY.ID_PIVOVARU = P.ID_PIVOVARU JOIN VYSTAV V on P.ID_PIVA = V.ID_PIVA
+    JOIN DRUHY_PIVA DP on P.ID_DRUHU_PIVA = DP.ID_DRUHU_PIVA JOIN ADRESY A2 on A2.ID_ADRESY = PIVOVARY.ID_ADRESY
+    JOIN SMEROVACI_CISLA SC on A2.PSC = SC.PSC JOIN OBCE O on O.ID_OBCE = SC.ID_OBCE
+    WHERE PIVOVARY.ID_PIVOVARU=p_idpivo AND EXTRACT(YEAR FROM CAST(CAS_VYSTAVENI AS DATE))=EXTRACT(YEAR FROM CURRENT_DATE)
+    ORDER BY pivonazev;
+
+    CURSOR cur_data IS SELECT PIVOVARY.NAZEV as pivonazev,ULICE,CISLO_POPISNE,CISLO_ORIENTACNI,O.NAZEV as obecnazev, A2.PSC, V.CAS_VYSTAVENI,V.POCET_KUSU,
+    DP.ID_DRUHU_PIVA,ID_RESTAURACE FROM PIVOVARY JOIN PIVA P on PIVOVARY.ID_PIVOVARU = P.ID_PIVOVARU JOIN VYSTAV V on P.ID_PIVA = V.ID_PIVA
+    JOIN DRUHY_PIVA DP on P.ID_DRUHU_PIVA = DP.ID_DRUHU_PIVA JOIN ADRESY A2 on A2.ID_ADRESY = PIVOVARY.ID_ADRESY
+    JOIN SMEROVACI_CISLA SC on A2.PSC = SC.PSC JOIN OBCE O on O.ID_OBCE = SC.ID_OBCE
+    WHERE PIVOVARY.ID_PIVOVARU=p_idpivo
+    ORDER BY pivonazev;
+
+    CURSOR cur_druhy IS SELECT DP.NAZEV FROM PIVOVARY JOIN PIVA P on PIVOVARY.ID_PIVOVARU = P.ID_PIVOVARU
+    JOIN DRUHY_PIVA DP on P.ID_DRUHU_PIVA = DP.ID_DRUHU_PIVA
+    WHERE PIVOVARY.ID_PIVOVARU=p_idpivo;
+        v_pocet_sudu number :=0;
+        v_nazevpiv pivovary.nazev%type;
+        v_ulice adresy.ulice%type;
+        v_ap adresy.cislo_popisne%type;
+        v_ao adresy.cislo_orientacni%type;
+        v_no obce.nazev%type;
+        v_psc smerovaci_cisla.psc%type;
+        v_pocet_restauraci number;
+BEGIN
+    SELECT Count(DISTINCT ID_RESTAURACE) INTO v_pocet_restauraci FROM PIVOVARY JOIN PIVA P on PIVOVARY.ID_PIVOVARU = P.ID_PIVOVARU JOIN VYSTAV V on P.ID_PIVA = V.ID_PIVA
+    JOIN DRUHY_PIVA DP on P.ID_DRUHU_PIVA = DP.ID_DRUHU_PIVA JOIN ADRESY A2 on A2.ID_ADRESY = PIVOVARY.ID_ADRESY
+    JOIN SMEROVACI_CISLA SC on A2.PSC = SC.PSC JOIN OBCE O on O.ID_OBCE = SC.ID_OBCE
+    WHERE PIVOVARY.ID_PIVOVARU=p_idpivo
+    GROUP BY P.ID_PIVOVARU;
+
+    FOR r_vystav IN cur_vystav LOOP
+        v_pocet_sudu:=v_pocet_sudu+r_vystav.POCET_KUSU;
+        end loop;
+    FOR r_data IN cur_data LOOP
+        v_nazevpiv:=r_data.pivonazev;
+        v_ulice:=r_data.ULICE;
+        v_ap:=r_data.CISLO_POPISNE;
+        v_ao:=r_data.CISLO_ORIENTACNI;
+        v_no:=r_data.obecnazev;
+        v_psc:=r_data.PSC;
+        end loop;
+
+    sys.DBMS_OUTPUT.PUT_LINE( v_nazevpiv);
+    sys.DBMS_OUTPUT.PUT_LINE( ' - ' || v_ulice || ', ' || v_ap || ' [' || v_ao || '], ' || v_no || ', ' || v_psc);
+    sys.DBMS_OUTPUT.PUT_LINE( '* :: * :: * :: * :: * ::');
+    sys.DBMS_OUTPUT.PUT_LINE( '# pocet sudu: ' || v_pocet_sudu);
+    sys.DBMS_OUTPUT.PUT_LINE( '# pocet restaurací: ' || v_pocet_restauraci);
+    sys.DBMS_OUTPUT.PUT( '# druhy: ');
+    FOR r_druhy IN cur_druhy LOOP
+        sys.DBMS_OUTPUT.PUT(r_druhy.NAZEV || ', ') ;
+        end loop;
+    sys.DBMS_OUTPUT.new_line;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+        sys.DBMS_OUTPUT.PUT_LINE( 'Nebyl nalezen pivovar k danému ID');
+end;
+
+3)create or replace PROCEDURE priklad3 (p_id number, p_sloupec varchar2, p_hodnota varchar2)
+AS
+       CURSOR cur_adresy IS SELECT COLUMN_NAME FROM USER_TAB_COLUMNS WHERE TABLE_NAME='ADRESY'
+       ORDER BY COLUMN_NAME ASC ;
+        e_spatnysl EXCEPTION;
+        v_min number;
+        v_max number;
+        TYPE Varchar2TableType is TABLE OF varchar2(200) index by binary_integer;
+        v_table Varchar2TableType;
+           v_counter NUMBER := 1;
+           v_pocetsl number;
+BEGIN
+    SELECT Count(COLUMN_NAME) into v_pocetsl FROM USER_TAB_COLUMNS WHERE TABLE_NAME='ADRESY';
+      SELECT MIN(ID_ADRESY) INTO v_min FROM ADRESY;
+    SELECT MAX(ID_ADRESY) INTO v_max FROM ADRESY;
+    if p_id<v_min OR p_id>v_max THEN
+        raise_application_error(-20500,'Dané id neexistuje');
+    end if;
+      FOR r_adresy in cur_adresy LOOP
+            IF p_sloupec = r_adresy.COLUMN_NAME THEN
+               EXECUTE IMMEDIATE 'UPDATE ADRESY SET ' || p_sloupec || '='''||p_hodnota||'''WHERE ID_ADRESY='||p_id;
+            else
+                v_table(v_counter):=r_adresy.COLUMN_NAME;
+                 v_pocetsl:=v_pocetsl-1;
+            end if;
+            v_counter:=v_counter+1;
+          end loop;
+
+        if v_pocetsl = 0 then
+            sys.DBMS_OUTPUT.PUT_LINE('Takovýto sloupec neexistuje');
+            sys.DBMS_OUTPUT.PUT('Sloupce k dispozici: ');
+            for i in 1..v_table.COUNT loop
+                sys.DBMS_OUTPUT.PUT(v_table(i)||', ');
+                end loop;
+            sys.DBMS_OUTPUT.new_line;
+            end if;
+END;
+
+4)create or replace view PIVOVARSKE_ADRESY (id, nazev, obec,cislo_p,ulice,cislo_o,psc) as
+SELECT ID_PIVOVARU,PIVOVARY.NAZEV,O.NAZEV,CISLO_POPISNE,ULICE,CISLO_ORIENTACNI, ADRESY.PSC
+FROM PIVOVARY JOIN ADRESY ON PIVOVARY.ID_ADRESY=ADRESY.ID_ADRESY JOIN SMEROVACI_CISLA SC on ADRESY.PSC = SC.PSC
+JOIN OBCE O on SC.ID_OBCE = O.ID_OBCE JOIN KRAJE K on O.ID_KRAJE = K.ID_KRAJE
+WHERE K.NAZEV='Jihoceský kraj'
+WITH CHECK OPTION
+
+5)
+
+6)create or replace FUNCTION priklad6 (p_id_piva piva.id_piva%type) RETURN varchar2
+AS
+        v_vysledek varchar2(2000);
+        v_pocet_sudu number :=0;
+        v_min number;
+        v_max number;
+
+    CURSOR cur_piva IS SELECT P.NAZEV as nazevpiva, PIVOVARY.NAZEV as nazevpivovaru, DP.NAZEV as nazevdruhupiva
+    FROM PIVOVARY join PIVA P on PIVOVARY.ID_PIVOVARU = P.ID_PIVOVARU join DRUHY_PIVA DP on DP.ID_DRUHU_PIVA = P.ID_DRUHU_PIVA
+    WHERE P.ID_PIVA=p_id_piva;
+
+    CURSOR cur_cas IS SELECT P.NAZEV as nazevpiva, PIVOVARY.NAZEV as nazevpivovaru, DP.NAZEV as nazevdruhupiva,CAS_VYSTAVENI,POCET_KUSU
+    FROM PIVOVARY join PIVA P on PIVOVARY.ID_PIVOVARU = P.ID_PIVOVARU join DRUHY_PIVA DP on DP.ID_DRUHU_PIVA = P.ID_DRUHU_PIVA
+    join VYSTAV V on P.ID_PIVA = V.ID_PIVA WHERE P.ID_PIVA=p_id_piva AND EXTRACT(YEAR FROM CAST(CAS_VYSTAVENI AS DATE))=EXTRACT(YEAR FROM CURRENT_DATE);
+
+    r_pivoradek cur_piva%rowtype;
+
+BEGIN
+    SELECT MIN(ID_PIVA) INTO v_min FROM PIVA;
+    SELECT MAX(ID_PIVA) INTO v_max FROM PIVA;
+
+    if p_id_piva<v_min OR p_id_piva>v_max THEN
+        raise_application_error(-20555,'Dané id neexistuje');
+    end if;
+    FOR r_piva IN cur_cas LOOP
+        v_pocet_sudu:=v_pocet_sudu+r_piva.POCET_KUSU;
+        end loop;
+
+OPEN cur_piva;
+
+    FETCH cur_piva INTO r_pivoradek;
+CASE
+    WHEN length(r_pivoradek.nazevpiva) <= 11 THEN v_vysledek:= r_pivoradek.nazevpiva || ';' || r_pivoradek.nazevpivovaru || '.';
+    WHEN length(r_pivoradek.nazevpiva) >= 12 AND length(r_pivoradek.nazevpiva) <= 22
+    THEN v_vysledek:= r_pivoradek.nazevpiva || ';' || r_pivoradek.nazevpivovaru || ';' || r_pivoradek.nazevdruhupiva || '.';
+    WHEN LENGTH(r_pivoradek.nazevpiva) > 22 THEN v_vysledek:= r_pivoradek.nazevpiva || ';' || r_pivoradek.nazevpivovaru || ';' || v_pocet_sudu || '.';
+end case;
+
+CLOSE cur_piva;
+
+return v_vysledek;
+end;
+

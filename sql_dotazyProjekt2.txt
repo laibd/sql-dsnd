@@ -1,0 +1,58 @@
+
+1)SELECT text FROM (SELECT COUNT(VYRAZ.ID_VYRAZU)as Cnt,vyraz.text FROM VYRAZ JOIN klicove_slovo ON klicove_slovo.id_vyrazu=vyraz.id_vyrazu
+JOIN KNIHA ON klicove_slovo.id_knihy=kniha.id_knihy
+JOIN exemplar ON kniha.id_knihy=exemplar.kniha_id_knihy JOIN vypujcka ON exemplar.id_exemplare=vypujcka.exemplar_id_exemplare
+GROUP BY vyraz.text ORDER BY Cnt DESC, text DESC) WHERE ROWNUM = 1
+
+2)SELECT TEXT FROM(SELECT COUNT(vyraz.id_vyrazu) as Cnt, VYRAZ.TEXT 
+FROM VYRAZ JOIN KLICOVE_SLOVO ON KLICOVE_SLOVO.ID_VYRAZU=vyraz.id_vyrazu JOIN KNIHA ON kniha.id_knihy=klicove_slovo.id_knihy 
+WHERE MISTO_VYDANI='Reading' GROUP BY VYRAZ.TEXT ORDER BY Cnt DESC, text ASC)  WHERE ROWNUM=1
+
+3)SELECT Cnt FROM(SELECT COUNT(vyraz.id_vyrazu) as Cnt 
+FROM VYRAZ JOIN KLICOVE_SLOVO ON KLICOVE_SLOVO.ID_VYRAZU=vyraz.id_vyrazu JOIN KNIHA ON kniha.id_knihy=klicove_slovo.id_knihy 
+GROUP BY VYRAZ.TEXT ORDER BY Cnt DESC)WHERE ROWNUM = 1
+
+4)SELECT DISTINCT COUNT(VyRAZ.ID_VyRAZU) 
+FROM VYRAZ JOIN KLICOVE_SLOVO ON KLICOVE_SLOVO.ID_VYRAZU=VYRAZ.ID_VYRAZU JOIN KNIHA ON kniha.id_knihy=klicove_slovo.id_knihy 
+WHERE nakladatel='Computer Press'
+
+5)SELECT nazev FROM (SELECT COUNT(kniha.id_knihy) as Cnt,kniha.nazev FROM kniha JOIN exemplar ON kniha.id_knihy=exemplar.kniha_id_knihy
+JOIN vypujcka ON vypujcka.exemplar_id_exemplare=exemplar.id_exemplare
+WHERE kniha.misto_vydani NOT IN('Brno','Bučovice','České Budějovice','Dubany','Havlíčkův Brod','Kralice na Hané','Nymburk','Olomouc','Ostrava','Paha','Plzeň','Praha','Třebíč','V Praze','Veletiny')
+GROUP BY kniha.nazev ORDER BY Cnt DESC, nazev DESC) WHERE ROWNUM=1
+
+6)SELECT Cnt  FROM (SELECT COUNT(kniha.id_knihy) as Cnt, osoba.id_osoby FROM OSOBA 
+JOIN VYPUJCKA ON osoba.id_osoby=vypujcka.osoba_id_osoby JOIN exemplar ON vypujcka.exemplar_id_exemplare=exemplar.id_exemplare JOIN kniha ON kniha.id_knihy=exemplar.kniha_id_knihy
+WHERE kniha.nazev LIKE 'd%' GROUP BY osoba.id_osoby) WHERE Cnt>=3 
+
+7)
+
+8)SELECT COUNT(exemplar.id_exemplare)as Cnt FROM exemplar JOIN vypujcka ON exemplar.id_exemplare=vypujcka.exemplar_id_exemplare WHERE
+MONTHS_BETWEEN (vypujcka.skutecne_vraceno, vypujcka.datum_puceni)>(SELECT AVG(MONTHS_BETWEEN (vypujcka.skutecne_vraceno, vypujcka.datum_puceni)) as Prumer FROM vypujcka)
+ORDER BY Cnt
+
+9)SELECT COUNT(login) FROM osoba WHERE email IS NULL
+
+10)SELECT MIN(ROK_VYDANI)FROM KNIHA
+
+11)SELECT nazev FROM(SELECT MAX(LENGTH(kniha.nazev))as maxi, kniha.nazev FROM kniha GROUP BY nazev ORDER BY maxi DESC, nazev ASC) WHERE ROWNUM = 1
+
+
+12)SELECT ROUND((Nemazad/(SELECT COUNT(ID_OSOBY) FROM OSOBA))*100,3) FROM (SELECT COUNT(login) as Nemazad FROM osoba WHERE email IS NULL)
+
+13)SELECT ROUND((Nemazad/(SELECT COUNT(ID_KNIHY) FROM KNIHA))*100,3) FROM (SELECT COUNT(ID_KNIHY) as Nemazad FROM KNIHA WHERE VYDANI IS NULL)
+
+14)SELECT nazev FROM kniha WHERE rok_vydani=2001 AND (edice IS NOT NULL OR nakladatel IS NULL) 
+AND (LENGTH(isbn)<19 OR pocet_stran>=800) ORDER BY pocet_stran ASC, id_knihy DESC FETCH FIRST 1 ROWS ONLY
+
+15)SELECT COUNT(id_knihy) FROM (SELECT AVG(pocet_stran)as Prum, nakladatel as nak FROM kniha GROUP BY nakladatel) JOIN kniha ON kniha.nakladatel=nak 
+ WHERE pocet_stran<Prum
+
+16)SELECT COUNT(id_exemplare) FROM exemplar JOIN vypujcka ON exemplar.id_exemplare=vypujcka.exemplar_id_exemplare WHERE vypujcka.datum_puceni+2>=vypujcka.skutecne_vraceno
+
+17)SELECT UPPER(prijmeni), LOWER(SUBSTR(jmeno,1,3)) FROM (SELECT COUNT(id_osoby)as Cnt, osoba.jmeno, osoba.prijmeni, id_osoby, login FROM osoba JOIN vypujcka ON vypujcka.osoba_id_osoby=osoba.id_osoby 
+WHERE vypujcka.poznamka IS NOT NULL GROUP BY id_osoby, jmeno, prijmeni, login ORDER BY Cnt DESC,login DESC) WHERE ROWNUM = 1
+
+18)SELECT text FROM (SELECT COUNT(VYRAZ.ID_VYRAZU) as Cnt,vyraz.text FROM VYRAZ JOIN KLICOVE_SLOVO ON klicove_slovo.id_vyrazu=vyraz.id_vyrazu JOIN KNIHA ON klicove_slovo.id_knihy=kniha.id_knihy
+JOIN exemplar ON kniha.id_knihy=exemplar.kniha_id_knihy JOIN VYPUJCKA ON exemplar.id_exemplare=vypujcka.exemplar_id_exemplare JOIN OSOBA ON osoba.id_osoby=vypujcka.osoba_id_osoby
+WHERE osoba.jmeno='Marie' GROUP BY text ORDER BY Cnt DESC, text DESC)WHERE ROWNUM=1 
